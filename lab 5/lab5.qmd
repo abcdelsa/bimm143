@@ -1,0 +1,143 @@
+---
+title: "Lab 5: ggplot2"
+author: "Elsa Chen (A16632961)"
+format: pdf
+toc: TRUE
+---
+
+First look at the **ggplot2** package to plot graphs. THere are also other visualization systems including *"base"* plotting
+
+```{r}
+plot(cars)
+```
+
+*base* plot is generally short code and fast but less visually appealing **ggplot2** is more work but more robust and powerful
+
+```{r}
+# ggplot(cars)
+```
+
+gives error because **ggplot2** needs to be installed and loaded. To install: `install.packages("ggplot2")`
+
+```{r}
+# to load:
+library(ggplot2)
+```
+
+now ready to plot
+
+### basic usage
+
+```{r}
+ggplot(cars)
+```
+
+nothing plotted because need to specify:
+
+- **data**: data.frame with the data to plot
+- **aes**: which columns from df to plot (x, y, color, etc)
+- **geom**: which type of plot
+
+```{r}
+head(cars)
+```
+
+```{r}
+ggplot(cars) +
+  aes(x = speed, y = dist) +
+  geom_point()
+```
+
+to make the figure nicer
+
+```{r}
+ggplot(cars) +
+  aes(x = speed, y = dist) +
+  geom_point() +
+  geom_smooth(color = "black", se = FALSE, method = lm) +
+  labs(x = "Speed (MPH)", y = "Distance (ft)", title = "Stopping Dstance of Dld Cars", caption = "From the 'cars' dataset") +
+  theme_light()
+```
+
+### a more complicated scatter plot
+
+a plot of expression data
+
+```{r}
+url <- "https://bioboot.github.io/bimm143_S20/class-material/up_down_expression.txt"
+genes <- read.delim(url)
+head(genes)
+```
+
+> answering the lab sheet
+
+```{r}
+nrow(genes)
+colnames(genes)
+ncol(genes)
+table(genes$State) 
+# OR
+sum(genes$State == "up")
+round((sum(genes$State == "up") / nrow(genes)) * 100, 2)
+```
+
+plotting
+
+```{r}
+ggplot(genes) +
+  aes(x = Condition1, y = Condition2, color = State) +
+  geom_point() +
+  scale_color_manual(values = c("#7391FF", "grey", "#FF7373")) +
+  labs(title = "Gene Expression Changes Upon Drug Treatment", x = "Control (No Drug)", y = "Drug Treatment") +
+  theme_bw()
+```
+
+### gapminder dataset - even more complicated
+
+```{r}
+url <- "https://raw.githubusercontent.com/jennybc/gapminder/master/inst/extdata/gapminder.tsv"
+
+gapminder <- read.delim(url)
+```
+
+```{r}
+dim(gapminder)
+head(gapminder)
+```
+
+```{r}
+ggplot(gapminder) +
+  aes(x = gdpPercap, y = lifeExp) +
+  geom_point(alpha = 0.2)
+```
+
+> How many continents and countries?
+
+```{r}
+length(unique(gapminder$continent))
+length(unique(gapminder$country))
+```
+
+```{r}
+# install.package("dplyr")
+library(dplyr)
+```
+
+```{r}
+gapminder_2007 <- filter(gapminder, year == "2007")
+```
+
+```{r}
+ggplot(gapminder_2007)+
+  aes(x = gdpPercap, y = lifeExp, color = continent, size = pop) +
+  geom_point(alpha = 0.4)
+```
+facet
+
+```{r}
+ggplot(gapminder) +
+  aes(x = gdpPercap, y = lifeExp) +
+  geom_point(alpha = 0.2) +
+  facet_wrap(~continent)
+```
+

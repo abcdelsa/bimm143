@@ -1,0 +1,134 @@
+---
+title: "lab 10: structural bioinformatics"
+author: "Elsa Chen (A16632961)"
+format: pdf
+toc: TRUE
+---
+
+## Introduction to the RCSB Protein Data Bank (PDB)
+
+PDB is the main repository of biomolecular structure info \<www.rcsb.org\>
+
+### PDB statistics
+
+```{r}
+PDBstats <- read.csv("Data Export Summary.csv")
+PDBstats
+```
+
+> Q1: What percentage of structures in the PDB are solved by X-Ray and Electron Microscopy.
+
+need to get rid of commas in columns
+
+```{r}
+decomma <- function(x){
+  as.numeric(gsub(",", "", x))
+}
+```
+
+```{r}
+PDBstats[-1] <- apply(PDBstats[-1], 2, decomma)
+PDBstats
+```
+
+```{r}
+(sum(PDBstats$X.ray))/(sum(PDBstats$Total))*100
+(sum(PDBstats$EM))/(sum(PDBstats$Total))*100
+```
+
+`r (sum(PDBstats$X.ray))/(sum(PDBstats$Total))*100`% of structures in the PDB are solved by X-Ray, `r (sum(PDBstats$EM))/(sum(PDBstats$Total))*100`% of structures in the PDB are solved by EM
+
+## Visualizing the HIV-1 protease structure
+
+### Using Mol\* \<molstar.org/viewer/\> to get to know HIV-Pr
+
+![HIV-Pr molecular image](1HSG.png)
+
+![HIV-Pr highlighting ligand, D25, and H2O 308](1HSG%20(1).png)
+
+> Q4: Water molecules normally have 3 atoms. Why do we see just one atom per water molecule in this structure?
+
+Because the resolution of this experiment isn't high enough to see the very small hydrogens
+
+## Bio3D in R
+
+```{r}
+library(bio3d)
+```
+
+```{r}
+pdb <- read.pdb("1hsg")
+pdb
+```
+```{r}
+head(pdb$atom)
+```
+```{r}
+pdbseq(pdb)[25]
+```
+
+
+### Predicting functional motions of a single structure
+
+we can predict the dynamics of a molecule
+
+```{r}
+adk <- read.pdb("6s36")
+adk
+```
+
+```{r}
+m <- nma(adk) # normal mode analysis
+```
+```{r}
+plot(m)
+```
+```{r}
+mktrj(m, file="adk_m7.pdb")
+```
+
+# Comparative Analysis of Protein Structure
+
+analyze a protein family to understand structure, dynamics, and function
+
+```{r}
+library(bio3d)
+```
+```{r}
+id <- "1ake_A"
+aa <- get.seq(id)
+# b <- blast.pdb(aa)
+# hits <- plot(b)
+# head(hits$pdb.id)
+```
+
+```{r}
+# blast.pdb not working 
+hits <- NULL
+hits$pdb.id <- c('1AKE_A','6S36_A','6RZE_A','3HPR_A','1E4V_A','5EJE_A','1E4Y_A','3X2S_A','6HAP_A','6HAM_A','4K46_A','3GMT_A','4PZL_A')
+```
+
+```{r}
+# Download releated PDB files
+files <- get.pdb(hits$pdb.id, path="pdbs", split=TRUE, gzip=TRUE)
+# Align releated PDBs
+# BiocManager::install("msa")
+pdbs <- pdbaln(files, fit = TRUE, exefile="msa")
+# print out alignment
+pdbs
+```
+
+```{r}
+# perform PCA
+pc.xray <- pca(pdbs)
+plot(pc.xray)
+```
+
+```{r}
+# Visualize first principal component
+pc1 <- mktrj(pc.xray, pc=1, file="pc_1.pdb")
+```
+
+
+
+
