@@ -1,0 +1,153 @@
+---
+title: "lab8: mini project"
+author: "Elsa Chen (A16632961)"
+format: pdf
+toc: TRUE
+---
+## Exploratory data analysis
+
+### data preparation
+```{r}
+fna.data <- "WisconsinCancer.csv"
+wisc.df <- read.csv(fna.data, row.names=1)
+head(wisc.df)
+# We can use -1 here to remove the first column
+wisc.data <- wisc.df[,-1]
+diagnosis <- factor(wisc.df$diagnosis)
+```
+### exploring the data
+> Q1. How many observations are in this dataset?
+
+```{r}
+nrow(wisc.data)
+```
+
+> Q2. How many of the observations have a malignant diagnosis?
+
+```{r}
+length(which(diagnosis == "M"))
+# OR table(diagnosis)
+```
+
+> Q3. How many variables/features in the data are suffixed with _mean?
+
+```{r}
+sum(endsWith(colnames(wisc.data), "_mean"))
+# OR length(grep("_mean", colnames(wisc.data)))
+```
+## Principal Component Analysis
+
+### initial analysis
+
+```{r}
+km <- kmeans(wisc.data, centers = 2)
+table(km$cluster)
+```
+cross-table
+```{r}
+table(km$cluster, diagnosis)
+```
+
+```{r}
+plot(hclust(dist(wisc.data)))
+```
+
+### performing PCA
+```{r}
+# Check column means and standard deviations
+colMeans(wisc.data)
+apply(wisc.data,2,sd)
+```
+
+```{r}
+wisc.pr <- prcomp(wisc.data, scale. = TRUE)
+summary(wisc.pr)
+```
+
+> Q4. From your results, what proportion of the original variance is captured by the first principal components (PC1)?
+
+0.4427
+
+> Q5. How many principal components (PCs) are required to describe at least 70% of the original variance in the data?
+
+3
+
+> Q6. How many principal components (PCs) are required to describe at least 90% of the original variance in the data?
+
+7
+
+### interpreting PCA results
+
+```{r}
+biplot(wisc.pr)
+```
+
+> Q7. What stands out to you about this plot? Is it easy or difficult to understand? Why?
+
+It's very messy, can't make out single items. But I can see two different colors
+
+```{r}
+plot(wisc.pr$x[,1], wisc.pr$x[,2], col = diagnosis , 
+     xlab = "PC1", ylab = "PC2")
+```
+
+> Q8. Generate a similar plot for principal components 1 and 3. What do you notice about these plots?
+
+```{r}
+plot(wisc.pr$x[,1], wisc.pr$x[,3], col = diagnosis, xlab = "PC1", ylab = "PC3")
+```
+The two plots look very similar, but the PC2 plot has a more clear separation between the two groups. And the groups are better separated on the x axis. 
+
+```{r}
+library(ggplot2)
+res <- as.data.frame(wisc.pr$x)
+res$diagnosis <- diagnosis
+```
+```{r}
+ggplot(res) +
+  aes(PC1, PC2, col = diagnosis) +
+  geom_point()
+```
+
+#### how does PCA work?
+PCA takes data sets with lots of dimensions and flattens it into 2d.
+first largest amount of variation between data sets is PC1.
+second largest amount of variation is PC2.
+we can score genes based on how much they influence PC1, same for PC2. the further away the gene is from the mean variance, the higher the score is.
+Cell1PC1 score = (original read count for a gene in cell 1 * score for influence on PC1) + for all genes
+
+## Combining methods
+### clustering on PCA results
+
+```{r}
+wisc.pr.hclust <- hclust(dist(wisc.pr$x[,1:7]), method = "ward.D2")
+plot(wisc.pr.hclust)
+```
+
+```{r}
+grps <- cutree(wisc.pr.hclust, k=2)
+table(grps)
+table(grps, diagnosis)
+```
+```{r}
+ggplot(res) +
+  aes(x = PC1, y = PC2, col = grps) +
+  geom_point()
+```
+## Prediction
+
+
+```{r}
+url <- "https://tinyurl.com/new-samples-CSV"
+new <- read.csv(url)
+npc <- predict(wisc.pr, newdata=new)
+npc
+```
+
+```{r}
+plot(res$PC1, res$PC2, col = grps)
+points(npc[,1], npc[,2], col = "blue", pch = 16, cex = 3)
+text(npc[,1], npc[,2], labels = c(1,2), col = "white")
+```
+
+PCA is useful for analyzing large data sets. it works by finding new variables (PCs) that capture the most variance from the original variables in your data sets. 

@@ -1,0 +1,227 @@
+---
+title: "lab 13: Transcriptomics and the analysis of RNA-Seq data"
+author: "Elsa Chen (A16632961)"
+format: pdf
+---
+
+Analyzing a published RNA-seq experiment where airway smooth muscle cells were treated with dexamethasone, a synthetic glucocortiroid steroid with anti-inflammatory effects. 
+
+## Import data
+
+```{r}
+counts <- read.csv("airway_scaledcounts.csv", row.names=1)
+metadata <-  read.csv("airway_metadata.csv")
+library(tidyverse)
+```
+
+## Examine data
+
+> How many genes are in this dataset?
+
+```{r}
+nrow(counts)
+```
+
+> How many control cell lines do we have?
+
+```{r}
+table(metadata$dex)
+```
+```{r}
+all(colnames(counts) == metadata$id)
+```
+
+## Analysis
+
+Start by comparing control and treated columns. I will find the average for each gene in all control columns and the average for all treated columns
+
+```{r}
+# finding control averages
+control.ind <- metadata$dex == "control"
+control.cts <- counts[,control.ind]
+control.avg <- apply(control.cts, 1, mean)
+```
+
+```{r}
+# finding treated averages
+treated.avg <- apply(counts[,metadata$dex == "treated"], 1, mean)
+```
+
+```{r}
+# combine the two
+meancounts <- data.frame(control.avg, treated.avg)
+```
+
+plot the means against each other to see if drug has an effect on the samples
+
+```{r}
+ggplot(meancounts, aes(control.avg, treated.avg)) +
+  geom_point(alpha = 0.2) +
+  geom_smooth(method = lm) +
+  scale_x_continuous(trans = "log2") +
+  scale_y_continuous(trans = "log2")
+```
+
+log2 units are the most common because they have simple interpretations.
+
+we will calculate the LFC of treated/control values and add it to our df 
+
+```{r}
+meancounts$log2fc <- log2(meancounts$treated.avg / meancounts$control.avg)
+head(meancounts)
+```
+there are some -Inf and NaN because of the 0 reads in the dataset.
+we can filter the data to exclude these
+
+```{r}
+to.keep <- rowSums(meancounts[,1:2] == 0) == 0
+mycounts <- meancounts[to.keep,]
+```
+> How many genes do we have left after filtering?
+
+```{r}
+nrow(mycounts)
+```
+a common threshold for up or down is |LFC| > 2
+
+> How many up regulated genes?
+
+```{r}
+sum(mycounts$log2fc >= 2)
+```
+> How many down regulated?
+
+```{r}
+sum(mycounts$log2fc <= -2)
+```
+
+## DESeq analysis
+
+We are missing the statistics, we can get that properly with DESeq
+
+```{r}
+#| message: false
+library(DESeq2)
+```
+
+```{r}
+dds <- DESeqDataSetFromMatrix(countData = counts, 
+                              colData = metadata, 
+                              design = ~ dex)
+```
+
+```{r}
+# run DESeq
+dds <- DESeq(dds)
+# get results
+res <- results(dds)
+head(res)
+```
+
+make a figure showing LFC vs padj
+
+```{r}
+plot(res$log2FoldChange, -log(res$padj))
+abline(v = -2, col = "grey")
+abline(v = 2, col = "grey")
+abline(h = -log(0.05), col = "grey")
+```
+```{r}
+# add some colors
+mycols <- rep("gray", nrow(res))
+mycols[ abs(res$log2FoldChange) > 2 ]  <- "red" 
+
+inds <- (res$padj < 0.01) & (abs(res$log2FoldChange) > 2 )
+mycols[ inds ] <- "blue"
+```
+
+```{r}
+# Volcano plot with custom colors 
+plot( res$log2FoldChange,  -log(res$padj), 
+ col=mycols, ylab="-Log(P-value)", xlab="Log2(FoldChange)" )
+
+# Cut-off lines
+abline(v=c(-2,2), col="gray", lty=2)
+abline(h=-log(0.1), col="gray", lty=2)
+```
+
+## Adding annotation data
+
+```{r}
+# BiocManager::install("AnnotationDbi")
+# BiocManager::install("org.Hs.eg.db")
+library("AnnotationDbi")
+library("org.Hs.eg.db")
+```
+
+```{r}
+columns(org.Hs.eg.db)
+```
+```{r}
+head(res)
+```
+Gene IDs are in the row names of res, and are from the ENSEMBL database (based on a google search)
+```{r}
+res$symbol <- mapIds(org.Hs.eg.db,
+                     keys=row.names(res), # Our genenames
+                     keytype="ENSEMBL", # The format of our genenames
+                     column="SYMBOL", # The new format we want to add
+                     multiVals="first")
+head(res)
+```
+
+We also want genename and entrezid
+```{r}
+res$genename <- mapIds(org.Hs.eg.db,
+                     keys=row.names(res), # Our genenames
+                     keytype="ENSEMBL", # The format of our genenames
+                     column="GENENAME", # The new format we want to add
+                     multiVals="first")
+res$entrezid <- mapIds(org.Hs.eg.db,
+                     keys=row.names(res), # Our genenames
+                     keytype="ENSEMBL", # The format of our genenames
+                     column="ENTREZID", # The new format we want to add
+                     multiVals="first")
+head(res)
+```
+
+save results into csv
+```{r}
+write.csv(res, "deseq_results.csv")
+```
+
+## Pathway analysis
+```{r}
+BiocManager::install( c("pathview", "gage", "gageData") )
+```
+
+```{r}
+library(pathview)
+library(gage)
+library(gageData)
+
+data(kegg.sets.hs)
+
+# Examine the first 2 pathways in this kegg set for humans
+head(kegg.sets.hs, 2)
+```
+to run gage we need to provide a vector of fold change values
+```{r}
+foldchange <- res$log2FoldChange
+# add ENTREZIDs as names to the vector
+names(foldchange) <- res$entrezid
+head(foldchange)
+```
+
+Now run **gage** with this input and the KEGG pathways
+
+```{r}
+keggres = gage(foldchange, gsets=kegg.sets.hs)
+attributes(keggres)
+```
+
+```{r}
+pathview(gene.data=foldchange, pathway.id="hsa05310")
+```
+
+![](hsa05310.pathview.png)
