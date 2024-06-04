@@ -9,10 +9,8 @@ Portfolio of my [bioinformatics class](https://bioboot.github.io/bimm143_S24/) a
 - **lab 9** [Data Analysis and Visualization mini project](lab9/lab9.md)
 - **lab 10** [Structural Bioinformatics](lab10/lab10.md)
 - **lab 11** [Genome Informatics](lab11/lab11.md)
-- **lab 12** []
-- **lab 13** []
-- 
-- 
-- 
-- 
-- 
+- **lab 13** [RNA-seq Data Analysis](lab13/lab13.md)
+- **lab 14** [RNA-seq mini project](lab14/lab14.md)
+- **lab 17** [Analyzing Sequencing Data in AWS Cloud](lab17/lab17.md)
+- **lab 18** [Mini Project: Investigating Pertussis Resurgence](lab18/lab18.md)
+- [**Datacamp Portfolio**](https://www.datacamp.com/portfolio/pec009)
