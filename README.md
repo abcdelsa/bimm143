@@ -7,8 +7,8 @@ Portfolio of my [bioinformatics class](https://bioboot.github.io/bimm143_S24/) a
 - **lab 7** [Machine Learning](lab7/lab7.md)
 - **lab 8** [Principal Component Analysis mini project](lab8/lab8.md)
 - **lab 9** [Data Analysis and Visualization mini project](lab9/lab9.md)
-- **lab 10** [Structural Bioinformatic]()
-- **lab 11** []
+- **lab 10** [Structural Bioinformatics](lab10/lab10.md)
+- **lab 11** [Genome Informatics](lab11/lab11.md)
 - **lab 12** []
 - **lab 13** []
 - 
